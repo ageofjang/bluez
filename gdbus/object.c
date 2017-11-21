@@ -651,6 +651,21 @@ static void add_pending(struct generic_data *data)
 	pending = g_slist_append(pending, data);
 }
 
+static gboolean
+interfaces_have_pending_prop (GSList *interfaces)
+{
+	GSList *l;
+
+	for (l = interfaces; l; l = l->next) {
+		struct interface_data *iface = l->data;
+
+		if (iface->pending_prop != NULL)
+			return TRUE;
+	}
+
+	return FALSE;
+}
+
 static gboolean remove_interface(struct generic_data *data, const char *name)
 {
 	struct interface_data *iface;
@@ -662,6 +677,7 @@ static gboolean remove_interface(struct generic_data *data, const char *name)
 	process_properties_from_interface(data, iface);
 
 	data->interfaces = g_slist_remove(data->interfaces, iface);
+	data->pending_prop = interfaces_have_pending_prop (data->interfaces);
 
 	if (iface->destroy) {
 		iface->destroy(iface->user_data);
@@ -1659,8 +1675,6 @@ static void process_properties_from_interface(struct generic_data *data,
 	DBusMessageIter iter, dict, array;
 	GSList *invalidated;
 
-	data->pending_prop = FALSE;
-
 	if (iface->pending_prop == NULL)
 		return;
 
@@ -1727,6 +1741,8 @@ static void process_property_changes(struct generic_data *data)
 
 		process_properties_from_interface(data, iface);
 	}
+
+	data->pending_prop = FALSE;
 }
 
 void g_dbus_emit_property_changed_full(DBusConnection *connection,
